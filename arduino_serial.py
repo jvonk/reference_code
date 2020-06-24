@@ -1,31 +1,49 @@
 import serial
 import datetime
+import time
 import serial.tools.list_ports
 import os.path
+import math
 coms = [serial.Serial(x[0], 9600, timeout=1) for x in serial.tools.list_ports.comports()]
 print('Reading from '+', '.join([x.port for x in coms]))
-setup=[(b'\xE6\x6F\xAE\x5F\xCC\x87\x48\x03\x9F\x87\x8E\x1E\xED\xF3\xCB\x34', 'arduino1'),
-       (b'\x3B\xC2\xAF\xC8\xD9\x24\x47\x2A\xB6\x17\x84\x30\xD4\x3F\x8A\xA3', 'arduino2'),
-       (b'\xFD\xF8\x9E\xAB\x93\xB1\x46\x55\x88\x2C\x54\x0E\xC6\x51\xA1\xC8', 'arduino3'),
-       (b'\xC5\xCD\x55\x66\x8C\xF2\x42\x79\xBC\x8E\xD6\xA6\xB4\x28\x54\x74', 'arduino4'),
-       (b'\xD8\x02\x0F\xFA\x6F\xB9\x44\x78\x97\xED\x61\x53\x7A\x94\x7F\x58', 'arduino5'),
-       (b'\x89\xB6\xD7\x40\xB2\x28\x47\xD7\xAF\x3D\x19\xBA\x4E\x49\x99\x57', 'arduino6'),
-       (b'\x5E\x89\x11\x5A\xEA\x5B\x41\x78\xAF\xBF\x72\x41\x3B\x17\xFE\xB9', 'arduino7'),
-       (b'\x87\x9B\xE7\xB7\x43\x9A\x4F\x88\x8D\x88\x10\x6B\x1F\x6D\x0F\x10', 'arduino8'),
-       (b'\xAE\xB2\x91\x9C\x5D\x50\x4C\xF0\xB8\x54\x4E\x81\x84\x74\x82\x39', 'arduino9'),
-       (b'\x2F\x94\x1F\x84\xF7\x59\x45\x16\x86\x35\x56\x5F\xAC\xD3\x40\x49', 'arduino10')]
+uuids=['e66fae5f-cc87-4803-9f87-8e1eedf3cb34',
+       '3bc2afc8-d924-472a-b617-8430d43f8aa3',
+       'fdf89eab-93b1-4655-882c-540ec651a1c8',
+       'c5cd5566-8cf2-4279-bc8e-d6a6b4285474',
+       'd8020ffa-6fb9-4478-97ed-61537a947f58',
+       '89b6d740-b228-47d7-af3d-19ba4e499957',
+       '5e89115a-ea5b-4178-afbf-72413b17feb9',
+       '879be7b7-439a-4f88-8d88-106b1f6d0f10',
+       'aeb2919c-5d50-4cf0-b854-4e8184748239',
+       '2f941f84-f759-4516-8635-565facd34049']
+pos = {'COM3': (2, 2),
+       'COM9': (3, 0),
+       'COM7': (1, 0),
+       'COM8': (2, 0),
+       'COM5': (0, 2),
+       'COM6': (0, 0),
+       'COM10': (3, 2)}
 for i in range(len(coms)):
-    coms[i].write(bytearray(setup[i][0]))
-    coms[i].write(setup[i][1].encode('ascii'))
+    coms[i].write(bytes.fromhex(uuids[i].replace('-','')))
+    coms[i].write(('arduino'+str(i)).encode('ascii'))
+    time.sleep(0.15/len(coms))
 with open('pi_pact_scan.csv','a+') as file:
     print('Writing to '+file.name)
     if (file.tell()<50):
-        file.write('RECEIVER,SCAN,ADDRESS,TIMESTAMP,UUID,MAJOR,MINOR,TX POWER,RSSI\n')
+        file.write('TIMESTAMP,SCANNER,ADVERTISER,TX POWER,RSSI,DISTANCE\n')
     while True:
-        for ser in coms:
+        for i in range(len(coms)):
+            ser=coms[i]
             data = ser.readline()
             data = data.decode('ascii').rstrip().split(',')
             if (len(data)>2):
-                data.insert(3, datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'))
-                file.write(','.join(data)+'\n')
+                try:
+                    j=uuids.index(data[3])
+                except:
+                    print('UUID ('+data[3]+') not recognized')
+                else:
+                    a=pos[coms[i].name]
+                    b=pos[coms[j].name]
+                    new=[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f'), str(i), str(j), data[6], data[7], "{:.1f}".format(math.sqrt((a[0]-b[0])**2+(a[1]-b[1])**2)*24)]
+                    file.write(','.join(new)+'\n')
         file.flush()
