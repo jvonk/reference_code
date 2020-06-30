@@ -1,3 +1,21 @@
+# ESP32 Firmware 
+**/build
+**/sdkconfig
+
+# large CSV files
+OLD/*.csv
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Intellij IDEA
+.idea
+
+# Confidential
+*.projbuild
+config.py
+OLD/config.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
